@@ -1,6 +1,10 @@
 package agora.ojus.example.com.conferenceapp;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.SurfaceView;
@@ -11,7 +15,6 @@ import io.agora.rtc.Constants;
 import io.agora.rtc.IRtcEngineEventHandler;
 import io.agora.rtc.RtcEngine;
 import io.agora.rtc.video.VideoCanvas;
-import io.agora.rtc.video.VideoEncoderConfiguration;
 
 
 public class ConferenceActivity extends AppCompatActivity {
@@ -19,20 +22,56 @@ public class ConferenceActivity extends AppCompatActivity {
     public static final String CHANNEL_NAME = "hi5";
 
     private RtcEngine mRtcEngine;
-
     private IRtcEngineEventHandler mRtcEventHandler ;
+    private static final int PERMISSION_REQ_ID = 22;
+
+    private static final String[] PERMISSIONS = {
+        Manifest.permission.RECORD_AUDIO,
+        Manifest.permission.CAMERA
+    };
+
+    public void init(){
+        initRtcEngine();
+        setupLocalVideo();
+        joinChannel();
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conference);
-
         initMRtcEventHandler();
-        initRtcEngine();
-        joinChannel();
-        setupLocalVideo();
+        if (checkPermissions()) {
+            Log.i("PERMISSIONS_EXIST", "all permissions exist");
+            init();
+        }
     }
 
+    public boolean checkPermissions() {
+        for(String permission : PERMISSIONS) {
+            Log.i("CHECK_PERMISSION", permission);
+            if (PackageManager.PERMISSION_GRANTED != ContextCompat.checkSelfPermission(this, permission)) {
+                Log.i("REQUESTING_PERMISSIONS", "App does not have permissions, requesting permissions");
+                ActivityCompat.requestPermissions(this,
+                        PERMISSIONS,
+                        PERMISSION_REQ_ID);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        Log.i("REQUESTED_CODE", requestCode+"");
+        for(String permission : permissions){
+            Log.i("PERMISSIONS", permission);
+        }
+        for(int grantResult : grantResults){
+            Log.i("GRANT_RESULTS", grantResult+"");
+        }
+    }
     private void initMRtcEventHandler(){
         mRtcEventHandler = new IRtcEngineEventHandler() {
             @Override
@@ -47,7 +86,7 @@ public class ConferenceActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onUserOffline(int uid, int reason) { // Tutorial Step 7
+            public void onUserOffline(int uid, int reason) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -85,7 +124,7 @@ public class ConferenceActivity extends AppCompatActivity {
     private void initRtcEngine() {
         try {
             mRtcEngine = RtcEngine.create(getBaseContext(), getString(R.string.agora_app_id), mRtcEventHandler);
-            joinChannel();
+            Log.i("INIT_RTC_ENGINE_SUCCESS", "successfully created Rtc Engine");
         } catch (Exception e) {
             Log.e("INIT_RTC_ENGINE_FAILED", Log.getStackTraceString(e));
 
